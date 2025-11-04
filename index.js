@@ -127,6 +127,39 @@ app.use(async (ctx, next) => {
   }
 });
 
+// Serve root-level images like /image_1.png or /image.png to avoid 404
+app.use(async (ctx, next) => {
+  try {
+    if (/^\/image(_\d+)?\.png$/i.test(ctx.path)) {
+      const filename = ctx.path.replace(/^\//, "");
+      const filePath = path.join(__dirname, filename);
+      if (fs.existsSync(filePath)) {
+        ctx.type = path.extname(filePath);
+        ctx.body = fs.createReadStream(filePath);
+        return;
+      } else {
+        ctx.status = 404;
+        ctx.body = "Not Found";
+        return;
+      }
+    }
+    if (ctx.path === "/favicon.ico") {
+      const icoPath = path.join(__dirname, "websites", "assets", "coze.png");
+      if (fs.existsSync(icoPath)) {
+        ctx.type = "png";
+        ctx.body = fs.createReadStream(icoPath);
+        return;
+      }
+    }
+  } catch (error) {
+    console.error("Static image access error:", error);
+    ctx.status = 500;
+    ctx.body = "Server Error: " + error.message;
+    return;
+  }
+  await next();
+});
+
 // Home route: serve project root index.html as the main UI
 router.get("/", async (ctx) => {
   try {

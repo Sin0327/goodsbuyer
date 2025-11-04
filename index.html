@@ -71,7 +71,7 @@
       content: ""; 
       position: fixed; 
       inset: 0; 
-      background: linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/image_4.png');
+      background: linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('image_4.png');
       background-size: cover; 
       background-position: center; 
       filter: blur(16px); 
@@ -105,17 +105,18 @@
     @media (max-width: 992px) { .hero-grid { grid-template-columns: 1fr; } .visual { height: 360px; } .title { font-size: 40px; } }
     @media (max-width: 640px) { .navbar { padding: 10px 14px; } .title { font-size: 32px; } }
   </style>
+    <link rel="icon" type="image/png" href="/assets/coze.png" />
 </head>
 <body>
   <!-- 顶部导航 -->
   <header class="header">
     <div class="navbar">
       <div class="brand">
-        <img class="brand-logo" src="/image_2.png" alt="示例图片" />
+        <img class="brand-logo" src="image_2.png" alt="示例图片" />
         <div class="brand-name">政策信息询问助手</div>
       </div>
       <div class="nav-actions">
-        <a class="nav-btn primary" href="/chat">开始聊天</a>
+        <a class="nav-btn primary" href="chat-sdk.html">开始聊天</a>
       </div>
     </div>
   </header>
@@ -129,7 +130,7 @@
         <!-- CTA 按钮已移除（按需可在此处恢复） -->
       </div>
       <div class="visual">
-        <img class="visual-img" src="/image_1.png" alt="海绵宝宝与派大星" />
+        <img class="visual-img" src="image_1.png" alt="海绵宝宝与派大星" />
       </div>
     </div>
   </section>
