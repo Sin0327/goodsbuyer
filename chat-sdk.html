@@ -148,16 +148,36 @@
           throw new Error('CozeWebSDK 未加载');
         }
 
-        // 从后端获取用户授权令牌（仅 OAuth）
-        const tokenResp = await fetch('/token', { credentials: 'include' });
-        if (!tokenResp.ok) {
-          // 默认跳转到授权
-          window.location.href = '/login';
-          return;
+        // 根据运行环境选择令牌获取方式：
+        // - 本地/有后端：从 /token 获取（OAuth 或 PAT 回退）
+        // - GitHub Pages：直接读取配置中的 websdk_pat（纯前端模式）
+        async function getTokenByEnv() {
+          const isPages = /github\.io$/i.test(window.location.hostname);
+          if (isPages) {
+            try {
+              const cfgResp = await fetch('coze_oauth_config.json', { cache: 'no-cache' });
+              if (cfgResp.ok) {
+                const cfg = await cfgResp.json();
+                const pat = (cfg && (cfg.websdk_pat || cfg.pat) || '').trim();
+                if (pat) { return { token_type: 'pat', access_token: pat }; }
+              }
+            } catch(e) {
+              console.warn('读取配置失败:', e);
+            }
+            throw new Error('Pages 环境缺少 websdk_pat，无法获取令牌');
+          }
+          const tokenResp = await fetch('/token', { credentials: 'include' });
+          if (!tokenResp.ok) {
+            // 在有后端的模式下，引导用户登录
+            window.location.href = '/login';
+            return null;
+          }
+          return tokenResp.json();
         }
-        const tokenData = await tokenResp.json();
-        ACCESS_TOKEN = tokenData.access_token;
-        TOKEN_TYPE = tokenData.token_type || 'pkce';
+
+        const tokenData = await getTokenByEnv();
+        ACCESS_TOKEN = tokenData && tokenData.access_token;
+        TOKEN_TYPE = (tokenData && tokenData.token_type) || 'pkce';
 
         chatClient = new window.CozeWebSDK.WebChatClient({
           // 使用 iframe 嵌入到全屏容器，避免小浮窗
@@ -181,10 +201,9 @@
                 return ACCESS_TOKEN;
               } catch (e) {
                 console.error('刷新令牌失败:', e);
-                // PAT 模式不刷新；OAuth 刷新失败则回到登录
-                if (TOKEN_TYPE !== 'pat') {
-                  window.location.href = '/login';
-                }
+                // PAT 模式不刷新；OAuth 刷新失败则回到登录（仅在有后端时）
+                const isPages = /github\.io$/i.test(window.location.hostname);
+                if (!isPages && TOKEN_TYPE !== 'pat') { window.location.href = '/login'; }
                 throw e;
               }
             }
