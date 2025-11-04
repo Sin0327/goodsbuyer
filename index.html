@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>政策信息询问助手 · 海底主题主页</title>
+  <style>
+    :root {
+      --ocean-deep: #0b1f3a;
+      --ocean-blue: #0ea5e9;
+      --ocean-teal: #14b8a6;
+      --sponge-yellow: #ffd54f;
+      --patrick-pink: #ff7aa2;
+      --sand: #f7e8c3;
+      --text-light: #e6faff;
+      --text-muted: #bde3f2;
+      --card-bg: rgba(255, 255, 255, 0.12);
+      --card-border: rgba(255, 255, 255, 0.25);
+      --radius-xl: 22px;
+      --shadow-glow: 0 0 24px rgba(20, 184, 166, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text-light);
+      background: radial-gradient(1200px 800px at 20% 20%, #073063 0%, #082954 35%, var(--ocean-deep) 100%);
+      overflow-x: hidden;
+    }
+
+    /* 顶部导航 */
+    .header {
+      position: fixed; left: 0; right: 0; top: 0; z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(4, 30, 58, 0.55);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .navbar { max-width: 1280px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-logo {
+      width: 44px; height: 44px; border-radius: 50%; display: block;
+      object-fit: cover; box-shadow: var(--shadow-glow);
+    }
+    .brand-name { font-weight: 800; letter-spacing: 0.5px; }
+    .nav-actions { display: flex; gap: 10px; }
+    .nav-btn {
+      padding: 10px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08); color: #fff; cursor: pointer;
+    }
+    .nav-btn.primary { background: linear-gradient(135deg, var(--sponge-yellow), var(--patrick-pink)); color: #0b1f3a; border: none; font-weight: 700; }
+
+    /* 英雄区 */
+    .hero { position: relative; padding: 120px 20px 40px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .hero-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: center; }
+    .title { font-size: 52px; line-height: 1.1; margin: 0 0 18px; }
+    .title .yellow { color: var(--sponge-yellow); }
+    .title .pink { color: var(--patrick-pink); }
+    .subtitle { color: var(--text-muted); font-size: 18px; max-width: 640px; }
+    .cta { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn { padding: 12px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; }
+    .btn.primary { background: linear-gradient(135deg, var(--ocean-teal), var(--ocean-blue)); border: none; box-shadow: var(--shadow-glow); }
+    .btn.sand { background: linear-gradient(135deg, var(--sand), #ffe4a1); color: #1c1c1c; border: none; }
+
+    /* 英雄视觉：海底世界卡通元素 */
+    .visual { position: relative; height: 420px; border: none; background: transparent; border-radius: 0; box-shadow: none; overflow: hidden; }
+    /* Global blurred background image */
+    body::before { 
+      content: ""; 
+      position: fixed; 
+      inset: 0; 
+      background: linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/image_4.png');
+      background-size: cover; 
+      background-position: center; 
+      filter: blur(16px); 
+      transform: scale(1.05);
+      z-index: -1;
+      pointer-events: none;
+    }
+    .reef { position: absolute; bottom: -20px; left: -10px; width: 60%; height: 160px; background: radial-gradient(circle at 30% 30%, #0ea5e9 0%, transparent 60%); filter: blur(30px); opacity: 0.25; }
+    .bubble { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,255,0.6); animation: rise 10s linear infinite; }
+    .bubble.big { width: 24px; height: 24px; background: rgba(255,255,255,0.5); }
+    @keyframes rise { 0% { transform: translateY(0) scale(1); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(-420px) scale(0.9); opacity: 0; } }
+    .character { position: absolute; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.08); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 14px; backdrop-filter: blur(6px); }
+    .patrick { bottom: 30px; right: 20px; }
+    .sponge { top: 30px; left: 20px; }
+    .emoji { font-size: 26px; }
+    .tag { font-weight: 700; letter-spacing: 0.3px; }
+    /* 放图：保证原图比例不被拉伸 */
+    .visual-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* 功能介绍 */
+    .features { padding: 40px 20px 20px; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+    .feature-card { border: 1px solid var(--card-border); background: var(--card-bg); border-radius: var(--radius-xl); padding: 18px; backdrop-filter: blur(8px); }
+    .feature-title { font-weight: 700; margin-bottom: 8px; }
+    .feature-desc { color: var(--text-muted); }
+
+    /* 页脚 */
+    .footer { padding: 30px 20px 50px; color: var(--text-muted); text-align: center; }
+
+    /* 响应式 */
+    @media (max-width: 992px) { .hero-grid { grid-template-columns: 1fr; } .visual { height: 360px; } .title { font-size: 40px; } }
+    @media (max-width: 640px) { .navbar { padding: 10px 14px; } .title { font-size: 32px; } }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="header">
+    <div class="navbar">
+      <div class="brand">
+        <img class="brand-logo" src="/image_2.png" alt="示例图片" />
+        <div class="brand-name">政策信息询问助手</div>
+      </div>
+      <div class="nav-actions">
+        <a class="nav-btn primary" href="/chat">开始聊天</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 英雄区域：海底主题 -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <h1 class="title">和 <span class="yellow">海绵宝宝</span> 与 <span class="pink">派大星</span> 一起探索政策海洋！</h1>
+        <p class="subtitle">这是一个海底主题的介绍主页，用于展示政策信息询问助手的能力与使用方式。点击“开始聊天”进入子页面与智能体对话。</p>
+        <!-- CTA 按钮已移除（按需可在此处恢复） -->
+      </div>
+      <div class="visual">
+        <img class="visual-img" src="/image_1.png" alt="海绵宝宝与派大星" />
+      </div>
+    </div>
+  </section>
+
+  <!-- 功能介绍 -->
+  <section id="features" class="features">
+    <div class="container">
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-title">政策反馈</div>
+          <div class="feature-desc">极速告知你所需物料的政策信息。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-title">客户查询</div>
+          <div class="feature-desc">查询客户信息以及所负责的人。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-title">智能检索</div>
+          <div class="feature-desc">支持关键词检索内容，提升查找效率。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-title">会话历史</div>
+          <div class="feature-desc">可供各设备使用对话，且保留对话记录。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      <p>说明：主页仅做功能介绍与导航；实际对话在子页面进行。</p>
+      <p>© 2025 政策信息询问助手</p>
+    </div>
+  </footer>
+  <script>
+    // 处理退出：调用后端 POST /logout 清理会话
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('logoutBtn');
+      if (!btn) return;
+      btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        try {
+          const resp = await fetch('/logout', { method: 'POST', credentials: 'include' });
+          if (resp && resp.ok) {
+            // 返回主页，重新鉴权
+            window.location.href = '/';
+          } else {
+            alert('退出失败，请稍后重试');
+          }
+        } catch (err) {
+          alert('网络异常，退出失败');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

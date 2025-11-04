@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>南沙政策 AI 助手 - 聊天</title>
+  <style>
+    :root {
+      --primary-color: #0066ff;
+      --secondary-color: #00d4ff;
+      --accent-color: #ff6b6b;
+      --text-dark: #1a1a2e;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --gradient-primary: linear-gradient(135deg, #0066ff 0%, #00d4ff 100%);
+      --shadow-heavy: 0 20px 40px rgba(0, 0, 0, 0.15);
+      --glow: 0 0 30px rgba(0, 212, 255, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+
+    body {
+      background: #ffffff;
+      display: flex; flex-direction: column; position: relative;
+    }
+
+    /* 全屏承载容器 */
+    .chat-fullscreen {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%; z-index: 1; background: var(--bg-primary);
+    }
+    .chat-fullscreen iframe {
+      width: 100% !important; height: 100% !important; border: 0;
+      border-radius: 0 !important; box-shadow: none !important;
+    }
+
+    /* SDK 注入的浮窗/面板强制全屏显示（兜底覆盖） */
+    iframe[src*="coze"],
+    iframe[src*="chat-app-sdk"],
+    .coze-web-sdk,
+    .coze-chat,
+    .chatbot-window,
+    .coze-dialog,
+    .coze-overlay,
+    [class*="coze"][class*="chat"] {
+      position: fixed !important;
+      top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+      width: 100% !important; height: 100% !important;
+      max-width: none !important; max-height: none !important;
+      border-radius: 0 !important; box-shadow: none !important;
+    }
+
+    body::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="circuit" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M10,10 L90,10 L90,90 L10,90 Z M30,30 L70,30 M30,50 L70,50 M30,70 L70,70" fill="none" stroke="rgba(0,212,255,0.1)" stroke-width="1"/><circle cx="20" cy="20" r="2" fill="rgba(0,212,255,0.2)"/><circle cx="80" cy="80" r="2" fill="rgba(255,107,107,0.2)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23circuit)"/></svg>');
+      display: none;
+    }
+
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+
+    .loading-container {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, var(--text-dark) 0%, #1a1a2e 50%, #16213e 100%);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 9999; transition: opacity 0.5s ease;
+    }
+
+    .loading-logo {
+      width: 100px; height: 100px; background: rgba(0, 212, 255, 0.1);
+      border: 2px solid rgba(0, 212, 255, 0.3); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 30px;
+      animation: pulse 2s infinite; backdrop-filter: blur(10px); box-shadow: var(--glow);
+    }
+    .loading-logo::before { content: "🤖"; font-size: 50px; }
+
+    .loading-text { color: white; font-size: 22px; font-weight: 600; margin-bottom: 15px; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .loading-subtitle { color: rgba(255, 255, 255, 0.8); font-size: 16px; font-weight: 400; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 1; box-shadow: var(--glow); } 50% { transform: scale(1.1); opacity: 0.7; box-shadow: 0 0 50px rgba(0, 212, 255, 0.5); } 100% { transform: scale(1); opacity: 1; box-shadow: var(--glow); } }
+
+    .error-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, var(--accent-color) 0%, #ee5a24 100%); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9998; color: white; text-align: center; padding: 20px; }
+    .error-icon { font-size: 80px; margin-bottom: 30px; animation: shake 0.5s ease-in-out infinite alternate; }
+    @keyframes shake { 0% { transform: translateX(0); } 100% { transform: translateX(5px); } }
+    .error-title { font-size: 24px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
+    .error-message { font-size: 16px; opacity: 0.9; line-height: 1.6; font-weight: 400; }
+
+    @media (max-width: 768px) {
+      .loading-logo { width: 80px; height: 80px; }
+      .loading-logo::before { font-size: 40px; }
+      .loading-text { font-size: 18px; }
+      .loading-subtitle { font-size: 14px; }
+      .error-icon { font-size: 60px; }
+      .error-title { font-size: 20px; }
+      .error-message { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 全屏聊天承载容器 -->
+  <div id="chatContainer" class="chat-fullscreen"></div>
+  <!-- 加载界面 -->
+  <div class="loading-container" id="loadingContainer">
+    <div class="loading-logo"></div>
+    <div class="loading-text">正在进入聊天...</div>
+    <div class="loading-subtitle">政策信息询问助手</div>
+  </div>
+
+  <!-- 错误界面 -->
+  <div class="error-container" id="errorContainer">
+    <div class="error-icon">⚠️</div>
+    <div class="error-title">连接失败</div>
+    <div class="error-message" id="errorMessage">无法连接到聊天服务，请检查网络后重试</div>
+  </div>
+
+  <script>
+    // 配置：使用您的 BOT ID（令牌将从服务端获取）
+    const COZE_CONFIG = { botId: '7551607906198700058' };
+
+    let chatClient = null;
+    let ACCESS_TOKEN = null;
+    let TOKEN_TYPE = null;
+
+    function showError(detail) {
+      document.getElementById('loadingContainer').style.display = 'none';
+      const msgEl = document.getElementById('errorMessage');
+      if (detail) {
+        try {
+          let text = typeof detail === 'string' ? detail : (detail && detail.message) || JSON.stringify(detail);
+          // 脱敏：隐藏可能出现的令牌内容
+          text = text.replace(/pat_[A-Za-z0-9]+/g, 'pat_********');
+          text = text.replace(/(access_token"\s*:\s*")[^"]+(")/gi, '$1********$2');
+          msgEl.textContent = `错误详情：${text}`;
+        } catch(e) {}
+      }
+      document.getElementById('errorContainer').style.display = 'flex';
+    }
+
+    function hideLoading() {
+      const loadingContainer = document.getElementById('loadingContainer');
+      loadingContainer.style.opacity = '0';
+      setTimeout(() => { loadingContainer.style.display = 'none'; }, 500);
+    }
+
+    async function initCozeSDK() {
+      try {
+        if (typeof window.CozeWebSDK === 'undefined') {
+          throw new Error('CozeWebSDK 未加载');
+        }
+
+        // 从后端获取用户授权令牌（仅 OAuth）
+        const tokenResp = await fetch('/token', { credentials: 'include' });
+        if (!tokenResp.ok) {
+          // 默认跳转到授权
+          window.location.href = '/login';
+          return;
+        }
+        const tokenData = await tokenResp.json();
+        ACCESS_TOKEN = tokenData.access_token;
+        TOKEN_TYPE = tokenData.token_type || 'pkce';
+
+        chatClient = new window.CozeWebSDK.WebChatClient({
+          // 使用 iframe 嵌入到全屏容器，避免小浮窗
+          config: { botId: COZE_CONFIG.botId, isIframe: true },
+          auth: {
+            type: 'token',
+            token: ACCESS_TOKEN,
+            onRefreshToken: async () => {
+              // PAT 不需要刷新，直接返回当前令牌
+              if (TOKEN_TYPE === 'pat') { return ACCESS_TOKEN; }
+              try {
+                const resp = await fetch('/refresh_token', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({})
+                });
+                if (!resp.ok) throw new Error('刷新令牌失败');
+                const data = await resp.json();
+                ACCESS_TOKEN = data.access_token;
+                return ACCESS_TOKEN;
+              } catch (e) {
+                console.error('刷新令牌失败:', e);
+                // PAT 模式不刷新；OAuth 刷新失败则回到登录
+                if (TOKEN_TYPE !== 'pat') {
+                  window.location.href = '/login';
+                }
+                throw e;
+              }
+            }
+          },
+          userInfo: { id: 'user_' + Date.now(), url: '', nickname: '访客' },
+          ui: {
+            // 控制台风格：PC 布局 + 会话栏 + 上传 + 语音
+            base: { layout: 'pc', lang: 'zh-CN', zIndex: 2 },
+            asstBtn: { isNeed: false },
+            header: { isShow: true },
+            chatBot: {
+              title: '政策效能小手',
+              welcomeMessage: '您好！我是南沙政策 AI 助手，很高兴为您服务。',
+              uploadable: true,
+              isNeedAddNewConversation: true,
+              isNeedAudio: true
+            },
+            footer: { isShow: true, expressionText: 'AI生成内容，请仔细甄别' },
+            conversations: { isNeed: true }
+          }
+        });
+
+        function forceFullscreen() {
+          try {
+            const container = document.getElementById('chatContainer');
+            const iframes = Array.from(document.getElementsByTagName('iframe'));
+            const cozeIframe = iframes.find(f => /coze|chat-app-sdk|flow-platform/i.test(f.src || ''));
+            if (cozeIframe && container && cozeIframe.parentElement !== container) {
+              container.appendChild(cozeIframe);
+            }
+            const overlays = Array.from(document.querySelectorAll('div'))
+              .filter(d => /coze|chat|dialog|overlay/i.test(d.className || ''));
+            overlays.forEach(d => {
+              d.style.position = 'fixed';
+              d.style.top = '0'; d.style.left = '0'; d.style.right = '0'; d.style.bottom = '0';
+              d.style.width = '100%'; d.style.height = '100%';
+              d.style.borderRadius = '0'; d.style.boxShadow = 'none';
+            });
+          } catch (e) { console.warn('强制全屏失败（可忽略）:', e); }
+        }
+
+        if (chatClient && typeof chatClient.showChatBot === 'function') {
+          chatClient.showChatBot();
+          forceFullscreen();
+          hideLoading();
+        }
+
+        if (chatClient && typeof chatClient.on === 'function') {
+          chatClient.on('ready', function() {
+            console.log('Chat SDK 初始化成功');
+            hideLoading();
+            // 保持默认，不自动新建会话
+            chatClient.showChatBot && chatClient.showChatBot();
+            forceFullscreen();
+          });
+          chatClient.on('error', function(error) {
+            console.error('Chat SDK 错误:', error);
+            showError(error);
+          });
+      }
+    } catch (error) {
+      console.error('Chat SDK 初始化失败:', error);
+      showError(error);
+    }
+  }
+
+    function loadCozeSDK() {
+      return new Promise((resolve, reject) => {
+        if (window.CozeWebSDK) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src = 'https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.19/libs/cn/index.js';
+        script.onload = () => { console.log('Coze SDK 加载成功'); resolve(); };
+        script.onerror = () => { console.error('Coze SDK 加载失败'); reject(new Error('SDK 加载失败')); };
+        document.head.appendChild(script);
+      });
+    }
+
+    // 尝试清理旧版 SDK 的本地缓存，避免跨用户恢复旧会话导致权限错误
+    function forceClearAllCaches() {
+      try { if (localStorage && typeof localStorage.clear === 'function') localStorage.clear(); } catch(e) {}
+      try { if (sessionStorage && typeof sessionStorage.clear === 'function') sessionStorage.clear(); } catch(e) {}
+    }
+    function clearCozeCache() {
+      try {
+        const lkeys = Object.keys(localStorage || {});
+        lkeys.forEach(k => { if (/coze|conversation|chat|flow|sdk/i.test(k)) localStorage.removeItem(k); });
+      } catch(e) {}
+      try {
+        const skeys = Object.keys(sessionStorage || {});
+        skeys.forEach(k => { if (/coze|conversation|chat|flow|sdk/i.test(k)) sessionStorage.removeItem(k); });
+      } catch(e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        forceClearAllCaches();
+        clearCozeCache();
+        await loadCozeSDK();
+        await initCozeSDK();
+      } catch (error) {
+        console.error('初始化失败:', error);
+        showError(error);
+      }
+    });
+
+    window.addEventListener('error', function(e) {
+      console.error('页面错误:', e.error);
+      showError();
+    });
+  </script>
+</body>
+</html>
