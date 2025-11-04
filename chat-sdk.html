@@ -120,6 +120,7 @@
     let chatClient = null;
     let ACCESS_TOKEN = null;
     let TOKEN_TYPE = null;
+    let API_BASE = null; // 远程后端基址（用于 GitHub Pages 等纯前端环境）
 
     function showError(detail) {
       document.getElementById('loadingContainer').style.display = 'none';
@@ -149,29 +150,36 @@
         }
 
         // 根据运行环境选择令牌获取方式：
-        // - 本地/有后端：从 /token 获取（OAuth 或 PAT 回退）
-        // - GitHub Pages：直接读取配置中的 websdk_pat（纯前端模式）
+        // - 若配置提供 backend_base（或 URL 参数 ?api=），优先走远程后端 API
+        // - Pages 且无后端：使用前端 PAT 直连
+        // - 本地：使用同源后端 /token
         async function getTokenByEnv() {
           const isPages = /github\.io$/i.test(window.location.hostname);
-          if (isPages) {
-            try {
-              const cfgResp = await fetch('coze_oauth_config.json', { cache: 'no-cache' });
-              if (cfgResp.ok) {
-                const cfg = await cfgResp.json();
-                const pat = (cfg && (cfg.websdk_pat || cfg.pat) || '').trim();
-                if (pat) { return { token_type: 'pat', access_token: pat }; }
+          try {
+            const cfgResp = await fetch('coze_oauth_config.json', { cache: 'no-cache' });
+            if (cfgResp.ok) {
+              const cfg = await cfgResp.json();
+              const qpApi = new URLSearchParams(window.location.search).get('api');
+              API_BASE = (qpApi || cfg.backend_base || '').trim() || null;
+              // 在 Pages 或其他前端环境，如提供了后端基址，则调用远程后端
+              if (API_BASE) {
+                const tokenResp = await fetch(`${API_BASE}/token`, { credentials: 'include' });
+                if (tokenResp.ok) return tokenResp.json();
+                console.warn('远程后端获取 token 失败，回退前端模式');
               }
-            } catch(e) {
-              console.warn('读取配置失败:', e);
+              // 无后端时，尝试使用 PAT
+              if (isPages) {
+                const pat = (cfg && (cfg.websdk_pat || cfg.pat) || '').trim();
+                if (pat) return { token_type: 'pat', access_token: pat };
+                throw new Error('Pages 环境缺少 websdk_pat，无法获取令牌');
+              }
             }
-            throw new Error('Pages 环境缺少 websdk_pat，无法获取令牌');
+          } catch(e) {
+            console.warn('读取配置或远程后端失败:', e);
           }
+          // 本地同源后端
           const tokenResp = await fetch('/token', { credentials: 'include' });
-          if (!tokenResp.ok) {
-            // 在有后端的模式下，引导用户登录
-            window.location.href = '/login';
-            return null;
-          }
+          if (!tokenResp.ok) { window.location.href = '/login'; return null; }
           return tokenResp.json();
         }
 
@@ -189,7 +197,8 @@
               // PAT 不需要刷新，直接返回当前令牌
               if (TOKEN_TYPE === 'pat') { return ACCESS_TOKEN; }
               try {
-                const resp = await fetch('/refresh_token', {
+                const url = API_BASE ? `${API_BASE}/refresh_token` : '/refresh_token';
+                const resp = await fetch(url, {
                   method: 'POST',
                   credentials: 'include',
                   headers: { 'Content-Type': 'application/json' },
@@ -203,7 +212,10 @@
                 console.error('刷新令牌失败:', e);
                 // PAT 模式不刷新；OAuth 刷新失败则回到登录（仅在有后端时）
                 const isPages = /github\.io$/i.test(window.location.hostname);
-                if (!isPages && TOKEN_TYPE !== 'pat') { window.location.href = '/login'; }
+                if (TOKEN_TYPE !== 'pat') {
+                  const loginUrl = API_BASE ? `${API_BASE}/login` : (isPages ? null : '/login');
+                  if (loginUrl) window.location.href = loginUrl;
+                }
                 throw e;
               }
             }

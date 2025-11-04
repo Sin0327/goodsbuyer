@@ -11,7 +11,7 @@ const {
   refreshOAuthToken,
 } = require("@coze/api");
 const cors = require('@koa/cors');
-const REDIRECT_URI = "http://127.0.0.1:8080/callback";
+let REDIRECT_URI = process.env.REDIRECT_URI || "http://127.0.0.1:8080/callback";
 const configPath = path.join(__dirname, "coze_oauth_config.json");
 
 // Load configuration file
@@ -74,6 +74,12 @@ function timestampToDatetime(timestamp) {
 
 // Load configuration
 const config = loadConfig();
+// Prefer config redirect_uris when available
+try {
+  if (config && Array.isArray(config.redirect_uris) && config.redirect_uris.length > 0) {
+    REDIRECT_URI = process.env.REDIRECT_URI || config.redirect_uris[0];
+  }
+} catch(e) {}
 
 const app = new Koa();
 const router = new Router();
